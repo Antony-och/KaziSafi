@@ -21,7 +21,7 @@ import {
   Upload,
 } from 'lucide-react';
 import {calculateScopePricing, useApp} from '../context/AppContext';
-import {KENYAN_LOCATIONS_BY_CITY, SERVICE_SCOPE_CONFIG} from '../data/kazisafiData';
+import {SERVICE_SCOPE_CONFIG} from '../data/kazisafiData';
 import {
   Booking,
   CartItem,
@@ -54,6 +54,7 @@ export const BookingWizard: React.FC = () => {
     services,
     pros,
     savedAddresses,
+    activeLocationGroups,
     currentUser,
     bookingDraft,
     setBookingDraft,
@@ -723,8 +724,8 @@ export const BookingWizard: React.FC = () => {
                         }
                         className="w-full min-h-[46px] pl-10 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
                       >
-                        {KENYAN_LOCATIONS_BY_CITY.map((group) => (
-                          <optgroup key={group.city} label={group.city}>
+                        {activeLocationGroups.map((group) => (
+                          <optgroup key={group.id} label={group.city}>
                             {group.estates.map((est) => (
                               <option key={est} value={est}>
                                 {est}

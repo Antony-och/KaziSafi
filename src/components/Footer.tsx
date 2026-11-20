@@ -5,7 +5,8 @@ import {KENYAN_LOCATIONS_BY_CITY} from '../data/kazisafiData';
 import {PWAInstallButton} from './PWAInstallButton';
 
 export const Footer: React.FC = () => {
-  const {language, setLanguage, t, services, currentUser, navigate, openBooking} = useApp();
+  const {language, setLanguage, t, services, currentUser, navigate, openBooking, siteSettings} =
+    useApp();
   const isSw = language === 'sw';
 
   return (
@@ -22,7 +23,7 @@ export const Footer: React.FC = () => {
             >
               <img
                 src="/assets/aistudio/kazisafi-logo-horizontal-color_dd737d41.png"
-                alt="KaziSafi"
+                alt={siteSettings.platformName}
                 className="h-8 w-auto object-contain"
               />
             </button>
@@ -37,11 +38,13 @@ export const Footer: React.FC = () => {
             <div className="space-y-2 text-xs text-slate-600 tabular-nums">
               <p className="flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-[#0F766E] shrink-0" />
-                <span>+254 700 450 200 · Mon–Sun, 6:00 AM – 9:00 PM EAT</span>
+                <span>
+                  {siteSettings.supportPhone} · {siteSettings.operatingHours}
+                </span>
               </p>
               <p className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-[#0F766E] shrink-0" />
-                <span>support@kazisafi.co.ke</span>
+                <span>{siteSettings.supportEmail}</span>
               </p>
             </div>
 

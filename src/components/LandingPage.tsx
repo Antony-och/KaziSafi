@@ -13,16 +13,27 @@ import {
 import {useApp} from '../context/AppContext';
 import {
   HERO_IMAGE_URL,
-  KENYAN_ESTATES,
-  KENYAN_LOCATIONS_BY_CITY,
   TESTIMONIALS,
 } from '../data/kazisafiData';
 import {ServiceId} from '../types/kazisafi';
 
 export const LandingPage: React.FC = () => {
-  const {language, t, services, openBooking, navigate} = useApp();
+  const {
+    language,
+    t,
+    services,
+    activeLocationGroups,
+    activeEstates,
+    siteSettings,
+    openBooking,
+    navigate,
+  } = useApp();
   const [quickService, setQuickService] = useState<ServiceId>('cleaning');
-  const [quickEstate, setQuickEstate] = useState<string>(KENYAN_ESTATES[0]);
+  const [quickEstate, setQuickEstate] = useState<string>(
+    activeEstates.includes(siteSettings.defaultEstate)
+      ? siteSettings.defaultEstate
+      : activeEstates[0] || 'Kilimani'
+  );
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   const markImageFailed = (key: string) => {
@@ -139,8 +150,8 @@ export const LandingPage: React.FC = () => {
                   onChange={(e) => setQuickEstate(e.target.value)}
                   className="w-full min-h-[46px] pl-10 pr-4 rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
                 >
-                  {KENYAN_LOCATIONS_BY_CITY.map((group) => (
-                    <optgroup key={group.city} label={group.city}>
+                  {activeLocationGroups.map((group) => (
+                    <optgroup key={group.id} label={group.city}>
                       {group.estates.map((estate) => (
                         <option key={estate} value={estate}>
                           {estate}

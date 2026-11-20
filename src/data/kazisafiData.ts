@@ -1,5 +1,6 @@
 import {
   Booking,
+  LocationCityGroup,
   SavedAddress,
   ServiceAddon,
   ServiceCatalogTier,
@@ -53,6 +54,41 @@ export const KENYAN_LOCATIONS_BY_CITY: {city: string; estates: string[]}[] = [
 ];
 
 export const KENYAN_ESTATES: string[] = KENYAN_LOCATIONS_BY_CITY.flatMap((c) => c.estates);
+
+export const INITIAL_LOCATION_ZONES: LocationCityGroup[] = [
+  {
+    id: 'loc-nairobi',
+    city: 'Nairobi',
+    estates: [...KENYAN_LOCATIONS_BY_CITY[0].estates],
+    active: true,
+    dispatchRadiusKm: 5,
+    transportFeeKes: 0,
+  },
+  {
+    id: 'loc-mombasa',
+    city: 'Mombasa',
+    estates: [...KENYAN_LOCATIONS_BY_CITY[1].estates],
+    active: true,
+    dispatchRadiusKm: 8,
+    transportFeeKes: 0,
+  },
+  {
+    id: 'loc-nakuru',
+    city: 'Nakuru',
+    estates: [...KENYAN_LOCATIONS_BY_CITY[2].estates],
+    active: true,
+    dispatchRadiusKm: 10,
+    transportFeeKes: 0,
+  },
+  {
+    id: 'loc-kisumu-eldoret',
+    city: 'Kisumu & Eldoret',
+    estates: [...KENYAN_LOCATIONS_BY_CITY[3].estates],
+    active: true,
+    dispatchRadiusKm: 10,
+    transportFeeKes: 0,
+  },
+];
 
 export const INITIAL_SERVICES: ServiceItem[] = [
   {
@@ -888,6 +924,24 @@ export const INITIAL_USERS: UserAccount[] = [
     password: 'password123',
     role: 'customer',
     defaultEstate: 'Kilimani',
+  },
+  {
+    id: 'cust-brian-m',
+    name: 'Brian Mutisya',
+    email: 'brian.mutisya@gmail.com',
+    phone: '+254 721 998 310',
+    password: 'password123',
+    role: 'customer',
+    defaultEstate: 'Kileleshwa',
+  },
+  {
+    id: 'cust-neema',
+    name: 'Neema Achieng',
+    email: 'neema.achieng@gmail.com',
+    phone: '+254 724 118 409',
+    password: 'password123',
+    role: 'customer',
+    defaultEstate: 'Westlands',
   },
   {
     id: 'user-pro-amina',

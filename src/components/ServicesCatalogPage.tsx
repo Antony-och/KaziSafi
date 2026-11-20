@@ -12,14 +12,13 @@ import {
 } from 'lucide-react';
 import {useApp} from '../context/AppContext';
 import {
-  KENYAN_LOCATIONS_BY_CITY,
   SERVICE_CATALOG_TIERS,
   SERVICE_SCOPE_CONFIG,
 } from '../data/kazisafiData';
 import {ServiceId} from '../types/kazisafi';
 
 export const ServicesCatalogPage: React.FC = () => {
-  const {language, t, services, openBooking, navigate} = useApp();
+  const {language, t, services, activeLocationGroups, openBooking, navigate} = useApp();
   const [activeCategory, setActiveCategory] = useState<'ALL' | ServiceId>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
@@ -360,8 +359,8 @@ export const ServicesCatalogPage: React.FC = () => {
                 Active Kenyan Launch Locations
               </h3>
               <div className="space-y-1.5 text-xs text-slate-600">
-                {KENYAN_LOCATIONS_BY_CITY.map((group) => (
-                  <p key={group.city}>
+                {activeLocationGroups.map((group) => (
+                  <p key={group.id}>
                     <strong className="text-slate-800">{group.city}:</strong>{' '}
                     {group.estates.slice(0, 6).join(', ')}
                     {group.estates.length > 6 ? ` (+${group.estates.length - 6} more)` : ''}

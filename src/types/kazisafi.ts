@@ -76,6 +76,8 @@ export interface UserAccount {
   password: string;
   role: UserRole;
   defaultEstate?: string;
+  smsAlerts?: boolean;
+  whatsappAlerts?: boolean;
   proId?: string;
   avatarUrl?: string;
 }
@@ -93,7 +95,9 @@ export interface ServicePro {
   keyCollectEligible: boolean;
   nationalIdNumber: string;
   nationalIdDocName: string;
+  nationalIdDocDataUrl?: string;
   goodConductDocName: string;
+  goodConductDocDataUrl?: string;
   goodConductCertNumber: string;
   tradeCertName?: string;
   guarantorName?: string;
@@ -231,3 +235,32 @@ export interface WithdrawalRecord {
   mpesaRef: string;
   date: string;
 }
+
+export interface LocationCityGroup {
+  id: string;
+  city: string;
+  estates: string[];
+  active: boolean;
+  dispatchRadiusKm: number;
+  transportFeeKes: number;
+}
+
+export interface SiteSettings {
+  platformName: string;
+  supportPhone: string;
+  supportEmail: string;
+  operatingHours: string;
+  defaultLanguage: Language;
+  defaultEstate: string;
+  autoNearestDispatch: boolean;
+  dispatchRadiusKm: number;
+  allow50PercentDeposit: boolean;
+  keyCollectEnabled: boolean;
+  keyCollectMinFeeKes: number;
+  keyCollectPercent: number;
+  smsNotificationsEnabled: boolean;
+  whatsappAlertsEnabled: boolean;
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
+}
+

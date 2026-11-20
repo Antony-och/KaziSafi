@@ -1,6 +1,7 @@
 import React, {createContext, useContext, useEffect, useState} from 'react';
 import {
   INITIAL_BOOKINGS,
+  INITIAL_LOCATION_ZONES,
   INITIAL_PROS,
   INITIAL_SAVED_ADDRESSES,
   INITIAL_SERVICES,
@@ -18,12 +19,14 @@ import {
   CartItem,
   CustomerNotification,
   Language,
+  LocationCityGroup,
   PaymentMethod,
   PaymentPlan,
   SavedAddress,
   ServiceId,
   ServiceItem,
   ServicePro,
+  SiteSettings,
   UserAccount,
   UserRole,
   VerificationStatus,
@@ -53,6 +56,25 @@ const INITIAL_NOTIFICATIONS: CustomerNotification[] = [
   },
 ];
 
+export const DEFAULT_SITE_SETTINGS: SiteSettings = {
+  platformName: 'KaziSafi',
+  supportPhone: '+254 700 450 200',
+  supportEmail: 'support@kazisafi.co.ke',
+  operatingHours: 'Mon–Sun, 6:00 AM – 9:00 PM EAT',
+  defaultLanguage: 'en',
+  defaultEstate: 'Kilimani',
+  autoNearestDispatch: true,
+  dispatchRadiusKm: 5,
+  allow50PercentDeposit: true,
+  keyCollectEnabled: true,
+  keyCollectMinFeeKes: 500,
+  keyCollectPercent: 40,
+  smsNotificationsEnabled: true,
+  whatsappAlertsEnabled: true,
+  maintenanceMode: false,
+  maintenanceMessage: 'Scheduled M-Pesa settlement maintenance in progress. Bookings remain safe.',
+};
+
 interface PersistedState {
   language: Language;
   currentUserId: string | null;
@@ -65,6 +87,8 @@ interface PersistedState {
   savedProIds: string[];
   withdrawals: WithdrawalRecord[];
   commissionPercent: number;
+  siteSettings: SiteSettings;
+  locationZones: LocationCityGroup[];
 }
 
 function loadInitialState(): PersistedState {
@@ -84,6 +108,8 @@ function loadInitialState(): PersistedState {
         savedProIds: parsed.savedProIds ?? ['pro-amina', 'pro-david'],
         withdrawals: parsed.withdrawals ?? [],
         commissionPercent: parsed.commissionPercent ?? 15,
+        siteSettings: {...DEFAULT_SITE_SETTINGS, ...(parsed.siteSettings ?? {})},
+        locationZones: parsed.locationZones?.length ? parsed.locationZones : INITIAL_LOCATION_ZONES,
       };
     }
   } catch {
@@ -101,6 +127,8 @@ function loadInitialState(): PersistedState {
     savedProIds: ['pro-amina', 'pro-david'],
     withdrawals: [],
     commissionPercent: 15,
+    siteSettings: DEFAULT_SITE_SETTINGS,
+    locationZones: INITIAL_LOCATION_ZONES,
   };
 }
 
@@ -228,6 +256,35 @@ interface SignupProPayload {
   guarantorPhone?: string;
 }
 
+interface UpdateProfilePayload {
+  name: string;
+  phone: string;
+  email: string;
+  defaultEstate: string;
+  smsAlerts: boolean;
+  whatsappAlerts: boolean;
+  newPassword?: string;
+}
+
+interface UpdateProProfilePayload {
+  name: string;
+  phone: string;
+  email: string;
+  bio: string;
+  primaryService: ServiceId;
+  estates: string[];
+  avatarUrl: string;
+  nationalIdNumber: string;
+  nationalIdDocName: string;
+  nationalIdDocDataUrl?: string;
+  goodConductCertNumber: string;
+  goodConductDocName: string;
+  goodConductDocDataUrl?: string;
+  tradeCertName?: string;
+  guarantorName?: string;
+  guarantorPhone?: string;
+}
+
 interface CreateBookingPayload {
   mpesaPhone: string;
   mpesaRef: string;
@@ -299,6 +356,28 @@ interface AppContextValue {
   toggleKeyCollectEligibility: (proId: string) => void;
   resolveBookingDispute: (bookingId: string, resolution: 'release' | 'refund', note: string) => void;
   updateServiceBasePrice: (serviceId: ServiceId, newPriceKes: number) => void;
+  siteSettings: SiteSettings;
+  updateSiteSettings: (patch: Partial<SiteSettings>) => void;
+  resetSiteSettings: () => void;
+  locationZones: LocationCityGroup[];
+  activeLocationGroups: LocationCityGroup[];
+  activeEstates: string[];
+  addLocationCity: (
+    city: string,
+    dispatchRadiusKm?: number,
+    transportFeeKes?: number,
+    initialEstates?: string[]
+  ) => void;
+  toggleLocationCityActive: (cityId: string) => void;
+  updateLocationCityConfig: (
+    cityId: string,
+    patch: Partial<Pick<LocationCityGroup, 'city' | 'dispatchRadiusKm' | 'transportFeeKes'>>
+  ) => void;
+  addEstateToCity: (cityId: string, estateName: string) => void;
+  removeEstateFromCity: (cityId: string, estateName: string) => void;
+  resetLocationZones: () => void;
+  updateCurrentUserProfile: (payload: UpdateProfilePayload) => {ok: boolean; error?: string};
+  updateProProfile: (proId: string, payload: UpdateProProfilePayload) => {ok: boolean; error?: string};
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -414,7 +493,15 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({children}) =
     estate?: string,
     preselectedTierOption?: string
   ) => {
-    const chosenEstate = estate || currentUser?.defaultEstate || bookingDraft.estate || KENYAN_ESTATES[0];
+    const firstActiveEstate =
+      state.locationZones.find((z) => z.active && z.estates.length > 0)?.estates[0] ||
+      KENYAN_ESTATES[0];
+    const chosenEstate =
+      estate ||
+      currentUser?.defaultEstate ||
+      state.siteSettings.defaultEstate ||
+      bookingDraft.estate ||
+      firstActiveEstate;
     setBookingDraft((prev) => ({
       ...createDefaultDraft(serviceId, chosenEstate, preselectedTierOption, prev.cartItems),
       date: prev.date,
@@ -1033,6 +1120,204 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({children}) =
     }));
   };
 
+  const updateSiteSettings = (patch: Partial<SiteSettings>) => {
+    setState((prev) => ({
+      ...prev,
+      siteSettings: {...prev.siteSettings, ...patch},
+    }));
+  };
+
+  const resetSiteSettings = () => {
+    setState((prev) => ({
+      ...prev,
+      siteSettings: DEFAULT_SITE_SETTINGS,
+    }));
+  };
+
+  const activeLocationGroups = state.locationZones.filter(
+    (zone) => zone.active && zone.estates.length > 0
+  );
+  const activeEstates = activeLocationGroups.flatMap((zone) => zone.estates);
+
+  const addLocationCity = (
+    city: string,
+    dispatchRadiusKm = 8,
+    transportFeeKes = 0,
+    initialEstates: string[] = []
+  ) => {
+    const trimmed = city.trim();
+    if (!trimmed) return;
+    setState((prev) => {
+      if (prev.locationZones.some((z) => z.city.toLowerCase() === trimmed.toLowerCase())) {
+        return prev;
+      }
+      const cleanedEstates = Array.from(
+        new Set(initialEstates.map((e) => e.trim()).filter(Boolean))
+      );
+      const newZone: LocationCityGroup = {
+        id: `loc-${Date.now()}`,
+        city: trimmed,
+        estates: cleanedEstates,
+        active: true,
+        dispatchRadiusKm: Math.max(1, dispatchRadiusKm),
+        transportFeeKes: Math.max(0, transportFeeKes),
+      };
+      return {
+        ...prev,
+        locationZones: [...prev.locationZones, newZone],
+      };
+    });
+  };
+
+  const toggleLocationCityActive = (cityId: string) => {
+    setState((prev) => ({
+      ...prev,
+      locationZones: prev.locationZones.map((z) =>
+        z.id === cityId ? {...z, active: !z.active} : z
+      ),
+    }));
+  };
+
+  const updateLocationCityConfig = (
+    cityId: string,
+    patch: Partial<Pick<LocationCityGroup, 'city' | 'dispatchRadiusKm' | 'transportFeeKes'>>
+  ) => {
+    setState((prev) => ({
+      ...prev,
+      locationZones: prev.locationZones.map((z) => (z.id === cityId ? {...z, ...patch} : z)),
+    }));
+  };
+
+  const addEstateToCity = (cityId: string, estateName: string) => {
+    const trimmed = estateName.trim();
+    if (!trimmed) return;
+    setState((prev) => ({
+      ...prev,
+      locationZones: prev.locationZones.map((z) => {
+        if (z.id !== cityId) return z;
+        if (z.estates.some((e) => e.toLowerCase() === trimmed.toLowerCase())) return z;
+        return {...z, estates: [...z.estates, trimmed]};
+      }),
+    }));
+  };
+
+  const removeEstateFromCity = (cityId: string, estateName: string) => {
+    setState((prev) => ({
+      ...prev,
+      locationZones: prev.locationZones.map((z) =>
+        z.id === cityId
+          ? {...z, estates: z.estates.filter((e) => e !== estateName)}
+          : z
+      ),
+    }));
+  };
+
+  const resetLocationZones = () => {
+    setState((prev) => ({
+      ...prev,
+      locationZones: INITIAL_LOCATION_ZONES,
+      siteSettings: {...prev.siteSettings, defaultEstate: 'Kilimani'},
+    }));
+  };
+
+  const updateCurrentUserProfile = (payload: UpdateProfilePayload) => {
+    if (!currentUser) {
+      return {ok: false, error: 'You must be signed in to update your profile.'};
+    }
+    const trimmedEmail = payload.email.trim();
+    const emailConflict = state.users.some(
+      (u) => u.id !== currentUser.id && u.email.toLowerCase() === trimmedEmail.toLowerCase()
+    );
+    if (emailConflict) {
+      return {ok: false, error: 'Another account is already using this email address.'};
+    }
+    if (payload.newPassword && payload.newPassword.trim().length > 0 && payload.newPassword.trim().length < 6) {
+      return {ok: false, error: 'New password must be at least 6 characters.'};
+    }
+
+    setState((prev) => ({
+      ...prev,
+      users: prev.users.map((u) =>
+        u.id === currentUser.id
+          ? {
+              ...u,
+              name: payload.name.trim() || u.name,
+              phone: payload.phone.trim() || u.phone,
+              email: trimmedEmail || u.email,
+              defaultEstate: payload.defaultEstate || u.defaultEstate,
+              smsAlerts: payload.smsAlerts,
+              whatsappAlerts: payload.whatsappAlerts,
+              password:
+                payload.newPassword && payload.newPassword.trim().length >= 6
+                  ? payload.newPassword.trim()
+                  : u.password,
+            }
+          : u
+      ),
+    }));
+
+    return {ok: true};
+  };
+
+  const updateProProfile = (proId: string, payload: UpdateProProfilePayload) => {
+    const targetPro = state.pros.find((p) => p.id === proId);
+    if (!targetPro) {
+      return {ok: false, error: 'Worker profile not found.'};
+    }
+    const trimmedEmail = payload.email.trim();
+    const emailConflict = state.users.some(
+      (u) =>
+        u.proId !== proId &&
+        u.id !== currentUser?.id &&
+        u.email.toLowerCase() === trimmedEmail.toLowerCase()
+    );
+    if (emailConflict) {
+      return {ok: false, error: 'Another account is already using this email address.'};
+    }
+
+    setState((prev) => ({
+      ...prev,
+      pros: prev.pros.map((p) =>
+        p.id === proId
+          ? {
+              ...p,
+              name: payload.name.trim() || p.name,
+              phone: payload.phone.trim() || p.phone,
+              email: trimmedEmail || p.email,
+              bio: payload.bio.trim() || p.bio,
+              primaryService: payload.primaryService,
+              estates: payload.estates.length > 0 ? payload.estates : p.estates,
+              avatarUrl: payload.avatarUrl || p.avatarUrl,
+              nationalIdNumber: payload.nationalIdNumber.trim() || p.nationalIdNumber,
+              nationalIdDocName: payload.nationalIdDocName || p.nationalIdDocName,
+              nationalIdDocDataUrl: payload.nationalIdDocDataUrl ?? p.nationalIdDocDataUrl,
+              goodConductCertNumber:
+                payload.goodConductCertNumber.trim() || p.goodConductCertNumber,
+              goodConductDocName: payload.goodConductDocName || p.goodConductDocName,
+              goodConductDocDataUrl:
+                payload.goodConductDocDataUrl ?? p.goodConductDocDataUrl,
+              tradeCertName: payload.tradeCertName,
+              guarantorName: payload.guarantorName,
+              guarantorPhone: payload.guarantorPhone,
+            }
+          : p
+      ),
+      users: prev.users.map((u) =>
+        u.proId === proId || (currentUser && u.id === currentUser.id && u.role === 'pro')
+          ? {
+              ...u,
+              name: payload.name.trim() || u.name,
+              phone: payload.phone.trim() || u.phone,
+              email: trimmedEmail || u.email,
+              avatarUrl: payload.avatarUrl || u.avatarUrl,
+            }
+          : u
+      ),
+    }));
+
+    return {ok: true};
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -1085,6 +1370,20 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({children}) =
         toggleKeyCollectEligibility,
         resolveBookingDispute,
         updateServiceBasePrice,
+        siteSettings: state.siteSettings,
+        updateSiteSettings,
+        resetSiteSettings,
+        locationZones: state.locationZones,
+        activeLocationGroups,
+        activeEstates,
+        addLocationCity,
+        toggleLocationCityActive,
+        updateLocationCityConfig,
+        addEstateToCity,
+        removeEstateFromCity,
+        resetLocationZones,
+        updateCurrentUserProfile,
+        updateProProfile,
       }}
     >
       {children}

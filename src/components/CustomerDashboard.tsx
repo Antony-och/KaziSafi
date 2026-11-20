@@ -8,6 +8,7 @@ import {
   Heart,
   KeyRound,
   Lock,
+  Mail,
   MapPin,
   MessageSquare,
   Phone,
@@ -15,13 +16,15 @@ import {
   Radar,
   Receipt,
   RefreshCw,
+  Save,
+  Settings,
   ShieldCheck,
   Star,
+  User,
   X,
 } from 'lucide-react';
 import {computeHoursUntilService, useApp} from '../context/AppContext';
-import {KENYAN_LOCATIONS_BY_CITY} from '../data/kazisafiData';
-import {Booking, BookingStatus} from '../types/kazisafi';
+import {Booking, BookingStatus, Language} from '../types/kazisafi';
 
 const TRACKER_STEPS: {key: BookingStatus; label: string}[] = [
   {key: 'searching', label: 'Searching Pro'},
@@ -34,12 +37,15 @@ const TRACKER_STEPS: {key: BookingStatus; label: string}[] = [
 export const CustomerDashboard: React.FC = () => {
   const {
     currentUser,
+    language,
+    setLanguage,
     bookings,
     pros,
     notifications,
     markNotificationRead,
     markAllNotificationsRead,
     savedAddresses,
+    activeLocationGroups,
     savedProIds,
     openBooking,
     rebookFromHistory,
@@ -47,6 +53,7 @@ export const CustomerDashboard: React.FC = () => {
     cancelBookingWithPolicy,
     toggleSavedPro,
     addSavedAddress,
+    updateCurrentUserProfile,
   } = useApp();
 
   const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
@@ -62,6 +69,19 @@ export const CustomerDashboard: React.FC = () => {
   const [newEstate, setNewEstate] = useState('Kilimani');
   const [newApt, setNewApt] = useState('');
   const [newGate, setNewGate] = useState('');
+
+  // Profile Settings modal state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profileEstate, setProfileEstate] = useState('Kilimani');
+  const [profileLang, setProfileLang] = useState<Language>(language);
+  const [profileSmsAlerts, setProfileSmsAlerts] = useState(true);
+  const [profileWhatsappAlerts, setProfileWhatsappAlerts] = useState(true);
+  const [profileNewPassword, setProfileNewPassword] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [profileSavedToast, setProfileSavedToast] = useState(false);
 
   const myBookings = useMemo(() => {
     if (!currentUser) return [];
@@ -135,6 +155,48 @@ export const CustomerDashboard: React.FC = () => {
     return {hours, pct, refundKes};
   }, [cancelBookingTarget, isProNoShow]);
 
+  const openProfileSettings = () => {
+    setProfileName(currentUser?.name || '');
+    setProfilePhone(currentUser?.phone || '+254 7');
+    setProfileEmail(currentUser?.email || '');
+    setProfileEstate(currentUser?.defaultEstate || 'Kilimani');
+    setProfileLang(language);
+    setProfileSmsAlerts(currentUser?.smsAlerts ?? true);
+    setProfileWhatsappAlerts(currentUser?.whatsappAlerts ?? true);
+    setProfileNewPassword('');
+    setProfileError('');
+    setShowProfileModal(true);
+  };
+
+  const handleSaveProfileSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError('');
+    const res = updateCurrentUserProfile({
+      name: profileName,
+      phone: profilePhone,
+      email: profileEmail,
+      defaultEstate: profileEstate,
+      smsAlerts: profileSmsAlerts,
+      whatsappAlerts: profileWhatsappAlerts,
+      newPassword: profileNewPassword,
+    });
+    if (!res.ok) {
+      setProfileError(res.error || 'Could not update profile.');
+      return;
+    }
+    setLanguage(profileLang);
+    setShowProfileModal(false);
+    setProfileSavedToast(true);
+    setTimeout(() => setProfileSavedToast(false), 3000);
+  };
+
+  const customerInitials = (currentUser?.name || 'KS')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-50 py-8 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -151,15 +213,45 @@ export const CustomerDashboard: React.FC = () => {
               Track live nearest-Pro dispatch, KeyCollect handovers, M-Pesa escrow releases, and confirmations.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => openBooking('cleaning', currentUser?.defaultEstate)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0F766E] px-5 py-3 text-sm font-semibold text-white hover:bg-teal-800 transition-colors min-h-[46px] whitespace-nowrap shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Book a Service</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={openProfileSettings}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors min-h-[46px] whitespace-nowrap"
+            >
+              <Settings className="w-4 h-4 text-[#0F766E]" />
+              <span>Profile Settings</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openBooking('cleaning', currentUser?.defaultEstate)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0F766E] px-5 py-3 text-sm font-semibold text-white hover:bg-teal-800 transition-colors min-h-[46px] whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Book a Service</span>
+            </button>
+          </div>
         </div>
+
+        {profileSavedToast && (
+          <div
+            role="status"
+            className="rounded-2xl border border-teal-200 bg-teal-50 px-5 py-3.5 text-sm font-semibold text-[#0F766E] flex items-center justify-between gap-3"
+          >
+            <span className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Your profile settings and estate preferences have been updated.</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setProfileSavedToast(false)}
+              className="p-1 rounded-lg text-teal-700 hover:bg-teal-100"
+              aria-label="Dismiss notice"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Simulated SMS / WhatsApp Confirmation Banner */}
         {myUnreadNotifications.length > 0 && (
@@ -698,8 +790,8 @@ export const CustomerDashboard: React.FC = () => {
                     onChange={(e) => setNewEstate(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs"
                   >
-                    {KENYAN_LOCATIONS_BY_CITY.map((group) => (
-                      <optgroup key={group.city} label={group.city}>
+                    {activeLocationGroups.map((group) => (
+                      <optgroup key={group.id} label={group.city}>
                         {group.estates.map((e) => (
                           <option key={e} value={e}>
                             {e}
@@ -946,6 +1038,255 @@ export const CustomerDashboard: React.FC = () => {
                   className="flex-1 py-2.5 rounded-xl bg-rose-600 text-sm font-semibold text-white hover:bg-rose-700"
                 >
                   Confirm Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Settings Pop-Up Modal */}
+      {showProfileModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="customer-profile-settings-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs"
+        >
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-slate-200">
+            <div className="sticky top-0 bg-white px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 z-10">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-11 h-11 rounded-2xl bg-[#0F766E] text-white font-display text-sm font-bold flex items-center justify-center shrink-0">
+                  {customerInitials}
+                </span>
+                <div className="min-w-0">
+                  <h3
+                    id="customer-profile-settings-title"
+                    className="font-display text-lg font-bold text-slate-900 truncate"
+                  >
+                    Profile Settings
+                  </h3>
+                  <p className="text-xs text-slate-500 truncate">
+                    Manage your Kenyan contact, default estate &amp; notification preferences
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(false)}
+                aria-label="Close profile settings"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfileSettings} className="p-6 space-y-5">
+              {profileError && (
+                <div
+                  role="alert"
+                  className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700"
+                >
+                  {profileError}
+                </div>
+              )}
+
+              <div className="space-y-3.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Personal &amp; M-Pesa Contact
+                </p>
+
+                <div>
+                  <label
+                    htmlFor="prof-name"
+                    className="block text-xs font-semibold text-slate-700 mb-1.5"
+                  >
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      id="prof-name"
+                      type="text"
+                      required
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      className="w-full min-h-[42px] pl-10 pr-3.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label
+                      htmlFor="prof-phone"
+                      className="block text-xs font-semibold text-slate-700 mb-1.5"
+                    >
+                      Kenyan Phone (+254)
+                    </label>
+                    <div className="relative">
+                      <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        id="prof-phone"
+                        type="tel"
+                        required
+                        value={profilePhone}
+                        onChange={(e) => setProfilePhone(e.target.value)}
+                        className="w-full min-h-[42px] pl-10 pr-3.5 rounded-xl border border-slate-200 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="prof-email"
+                      className="block text-xs font-semibold text-slate-700 mb-1.5"
+                    >
+                      Email Address
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        id="prof-email"
+                        type="email"
+                        required
+                        value={profileEmail}
+                        onChange={(e) => setProfileEmail(e.target.value)}
+                        className="w-full min-h-[42px] pl-10 pr-3.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3.5 pt-2 border-t border-slate-100">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Home Location &amp; Language
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label
+                      htmlFor="prof-estate"
+                      className="block text-xs font-semibold text-slate-700 mb-1.5"
+                    >
+                      Default Estate / Area
+                    </label>
+                    <div className="relative">
+                      <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <select
+                        id="prof-estate"
+                        value={profileEstate}
+                        onChange={(e) => setProfileEstate(e.target.value)}
+                        className="w-full min-h-[42px] pl-10 pr-3 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
+                      >
+                        {activeLocationGroups.map((group) => (
+                          <optgroup key={group.id} label={group.city}>
+                            {group.estates.map((est) => (
+                              <option key={est} value={est}>
+                                {est}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="prof-lang"
+                      className="block text-xs font-semibold text-slate-700 mb-1.5"
+                    >
+                      Preferred Language
+                    </label>
+                    <select
+                      id="prof-lang"
+                      value={profileLang}
+                      onChange={(e) => setProfileLang(e.target.value as Language)}
+                      className="w-full min-h-[42px] px-3.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
+                    >
+                      <option value="en">English (EN)</option>
+                      <option value="sw">Kiswahili (SW)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 pt-2 border-t border-slate-100">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Booking &amp; Arrival Notifications
+                </p>
+
+                <label className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={profileSmsAlerts}
+                    onChange={(e) => setProfileSmsAlerts(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 text-[#0F766E] focus:ring-[#0F766E]"
+                  />
+                  <div>
+                    <span className="block text-xs font-bold text-slate-900">
+                      SMS Booking Confirmations
+                    </span>
+                    <span className="block text-[11px] text-slate-500">
+                      Receive instant SMS alerts when your nearest vetted Pro accepts or arrives.
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={profileWhatsappAlerts}
+                    onChange={(e) => setProfileWhatsappAlerts(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 text-[#0F766E] focus:ring-[#0F766E]"
+                  />
+                  <div>
+                    <span className="block text-xs font-bold text-slate-900">
+                      WhatsApp Receipts &amp; KeyCollect Updates
+                    </span>
+                    <span className="block text-[11px] text-slate-500">
+                      Get M-Pesa escrow receipts and KeyCollect custody handovers on WhatsApp.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label
+                  htmlFor="prof-password"
+                  className="block text-xs font-semibold text-slate-700"
+                >
+                  Change Password <span className="font-normal text-slate-400">(Optional)</span>
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="prof-password"
+                    type="password"
+                    value={profileNewPassword}
+                    onChange={(e) => setProfileNewPassword(e.target.value)}
+                    placeholder="Leave blank to keep current password"
+                    className="w-full min-h-[42px] pl-10 pr-3.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowProfileModal(false)}
+                  className="flex-1 min-h-[44px] py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-[#0F766E] text-sm font-semibold text-white hover:bg-teal-800 inline-flex items-center justify-center gap-1.5"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save Changes</span>
                 </button>
               </div>
             </form>

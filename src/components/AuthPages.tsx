@@ -15,7 +15,6 @@ import {
   User,
 } from 'lucide-react';
 import {useApp} from '../context/AppContext';
-import {KENYAN_ESTATES, KENYAN_LOCATIONS_BY_CITY} from '../data/kazisafiData';
 import {ServiceId} from '../types/kazisafi';
 
 export const AuthPages: React.FC<{mode: 'login' | 'signup'}> = ({mode}) => {
@@ -25,6 +24,9 @@ export const AuthPages: React.FC<{mode: 'login' | 'signup'}> = ({mode}) => {
     t,
     navigate,
     services,
+    activeLocationGroups,
+    activeEstates,
+    siteSettings,
     loginWithCredentials,
     loginAsDemoRole,
     signupCustomer,
@@ -44,7 +46,11 @@ export const AuthPages: React.FC<{mode: 'login' | 'signup'}> = ({mode}) => {
   const [phone, setPhone] = useState('+254 7');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [defaultEstate, setDefaultEstate] = useState('Kilimani');
+  const [defaultEstate, setDefaultEstate] = useState(
+    activeEstates.includes(siteSettings.defaultEstate)
+      ? siteSettings.defaultEstate
+      : activeEstates[0] || 'Kilimani'
+  );
   const [primaryService, setPrimaryService] = useState<ServiceId>('cleaning');
   const [selectedEstates, setSelectedEstates] = useState<string[]>([
     'Kilimani',
@@ -454,8 +460,8 @@ export const AuthPages: React.FC<{mode: 'login' | 'signup'}> = ({mode}) => {
                         onChange={(e) => setDefaultEstate(e.target.value)}
                         className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#0F766E]"
                       >
-                        {KENYAN_LOCATIONS_BY_CITY.map((group) => (
-                          <optgroup key={group.city} label={group.city}>
+                        {activeLocationGroups.map((group) => (
+                          <optgroup key={group.id} label={group.city}>
                             {group.estates.map((est) => (
                               <option key={est} value={est}>
                                 {est}
@@ -523,7 +529,7 @@ export const AuthPages: React.FC<{mode: 'login' | 'signup'}> = ({mode}) => {
                           </span>
                         </div>
                         <div className="max-h-32 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/60 p-2.5 flex flex-wrap gap-1.5">
-                          {KENYAN_ESTATES.map((est) => {
+                          {activeEstates.map((est) => {
                             const active = selectedEstates.includes(est);
                             return (
                               <button

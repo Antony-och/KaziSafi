@@ -41,6 +41,7 @@ const AppShell: React.FC = () => {
 
   const isAuthView =
     route === '/login' || route === '/signup' || (route === '/dashboard' && !currentUser);
+  const isAdminDashboard = route === '/dashboard' && currentUser?.role === 'admin';
 
   return (
     <div
@@ -50,7 +51,7 @@ const AppShell: React.FC = () => {
     >
       {!isAuthView && <Navbar />}
       <div className="flex-1">{renderView()}</div>
-      {!isAuthView && <Footer />}
+      {!isAuthView && !isAdminDashboard && <Footer />}
 
       {/* Real-Time Customer Confirmation Toast & Simulated SMS/WhatsApp Alert */}
       {toastNotification && (
